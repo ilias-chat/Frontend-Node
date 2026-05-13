@@ -1,0 +1,12 @@
+/TRWM-backend
+├── /config             # Database connection (Mongoose) and Environment variables
+├── /controllers        # Logic for handling requests and responses
+├── /middleware         # JWT validation and error handling 
+├── /models             # Mongoose schemas (Players, Comments, Users) 
+├── /routes             # API Route definitions (using Express) 
+├── /services           # External API calls (API-Football) and LLM integration [cite: 32, 35]
+├── /tests              # Unit tests for routes and logic 
+├── /utils              # Helper functions (Geolocation formatting, etc.) 
+├── swagger.json        # API Documentation 
+├── server.js           # Entry point
+└── .env                # Secret keys and DB URI
