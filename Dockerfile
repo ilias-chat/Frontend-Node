@@ -15,6 +15,4 @@ ENV PORT=3000
 
 EXPOSE 3000
 
-# Pass MONGO_URI (and other secrets) at run time, e.g.:
-#   docker run --rm -p 3000:3000 -e MONGO_URI="mongodb+srv://..." trwm-backend
 CMD ["node", "server.js"]
