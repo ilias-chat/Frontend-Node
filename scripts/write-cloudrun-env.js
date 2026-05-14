@@ -2,6 +2,11 @@
  * Writes cloudrun-env.json for google-github-actions/deploy-cloudrun env_vars_file.
  * JSON avoids shell/YAML quoting issues with MongoDB URIs (&, =, etc.) and
  * multi-line Firebase private keys.
+ *
+ * Environment variables (set in GitHub Actions for CD):
+ *   MONGO_URI (required)
+ *   FIREBASE_SERVICE_ACCOUNT_JSON (optional)
+ *   API_FOOTBALL_KEY (optional; required for admin import against API-Football in production)
  */
 const fs = require('fs');
 
@@ -26,6 +31,15 @@ if (firebaseRaw && String(firebaseRaw).trim()) {
 } else {
   console.log(
     '::warning::FIREBASE_SERVICE_ACCOUNT_JSON is not set. User routes that call verifyIdToken will fail unless Cloud Run uses a runtime service account with Firebase-compatible ADC. Add the FIREBASE_SERVICE_ACCOUNT_JSON repository secret to fix this.'
+  );
+}
+
+const apiFootballKey = process.env.API_FOOTBALL_KEY;
+if (apiFootballKey && String(apiFootballKey).trim()) {
+  env.API_FOOTBALL_KEY = String(apiFootballKey).trim();
+} else {
+  console.log(
+    '::warning::API_FOOTBALL_KEY is not set. POST /api/admin/import-players will return 503 on Cloud Run until you add the API_FOOTBALL_KEY repository secret and redeploy.'
   );
 }
 

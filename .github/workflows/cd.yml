@@ -13,6 +13,7 @@
 #   MONGO_URI            MongoDB Atlas URI (set on Cloud Run each deploy; keep as Secret)
 #   FIREBASE_SERVICE_ACCOUNT_JSON   Full Firebase service account JSON (same as local .env).
 #                          GitHub → Actions → Secrets (not Variables). Paste the entire JSON object.
+#   API_FOOTBALL_KEY     API-Sports / API-Football key (x-apisports-key). Required for POST /api/admin/import-players in production.
 
 name: CD
 
@@ -73,10 +74,11 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Write Cloud Run env file (JSON — MONGO_URI + optional Firebase)
+      - name: Write Cloud Run env file (JSON — MONGO_URI + optional Firebase + optional API-Football)
         env:
           MONGO_URI: ${{ secrets.MONGO_URI }}
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
         run: node scripts/write-cloudrun-env.js
 
       - name: Deploy to Cloud Run
