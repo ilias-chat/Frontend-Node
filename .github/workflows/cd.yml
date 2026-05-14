@@ -78,5 +78,6 @@ jobs:
           region: ${{ env.GCP_REGION_NAME }}
           project_id: ${{ env.GCP_PROJECT }}
           image: ${{ env.DOCKERHUB_USER }}/${{ env.DOCKERHUB_REPO_NAME }}:${{ github.sha }}
-          # Public HTTPS URL (restrict later with IAM / Cloud Armor). Cloud Run sets PORT for the container.
+          # After deploy: set MONGO_URI on the service (Console → Cloud Run → Edit revision → Variables)
+          # or wire GCP Secret Manager + --update-secrets so Atlas works in production.
           flags: --allow-unauthenticated --port=3000
