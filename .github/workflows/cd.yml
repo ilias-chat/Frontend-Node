@@ -10,7 +10,7 @@
 #   GCP_PROJECT_ID       GCP project ID (e.g. my-project-123)
 #   GCP_REGION           e.g. europe-west1
 #   CLOUD_RUN_SERVICE    Cloud Run service name
-#   DOCKERHUB_REPO       Hub repo name (default: ic844-node-backend if unset)
+#   MONGO_URI            MongoDB Atlas URI (set on Cloud Run each deploy; keep as Secret)
 
 name: CD
 
@@ -78,6 +78,8 @@ jobs:
           region: ${{ env.GCP_REGION_NAME }}
           project_id: ${{ env.GCP_PROJECT }}
           image: ${{ env.DOCKERHUB_USER }}/${{ env.DOCKERHUB_REPO_NAME }}:${{ github.sha }}
-          # After deploy: set MONGO_URI on the service (Console → Cloud Run → Edit revision → Variables)
-          # or wire GCP Secret Manager + --update-secrets so Atlas works in production.
+          # Quoted value: URIs contain "=" and "&" which break naive KEY=VALUE parsing.
+          env_vars: |-
+            MONGO_URI="${{ secrets.MONGO_URI }}"
+          env_vars_update_strategy: merge
           flags: --allow-unauthenticated --port=3000
