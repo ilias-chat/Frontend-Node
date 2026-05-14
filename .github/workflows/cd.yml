@@ -11,6 +11,8 @@
 #   GCP_REGION           e.g. europe-west1
 #   CLOUD_RUN_SERVICE    Cloud Run service name
 #   MONGO_URI            MongoDB Atlas URI (set on Cloud Run each deploy; keep as Secret)
+#   FIREBASE_SERVICE_ACCOUNT_JSON   Full Firebase service account JSON (same as local .env).
+#                          GitHub → Actions → Secrets (not Variables). Paste the entire JSON object.
 
 name: CD
 
@@ -71,9 +73,10 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Write Cloud Run env file (JSON — safe for Atlas URIs)
+      - name: Write Cloud Run env file (JSON — MONGO_URI + optional Firebase)
         env:
           MONGO_URI: ${{ secrets.MONGO_URI }}
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
         run: node scripts/write-cloudrun-env.js
 
       - name: Deploy to Cloud Run
