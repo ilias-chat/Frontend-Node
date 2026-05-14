@@ -24,7 +24,11 @@ const userSchema = new mongoose.Schema({
     name: { 
         type: String,
         trim: true,
-    }
+    },
+    avatar: {
+        type: String,
+        trim: true,
+    },
 }, { 
     timestamps: true // Automatically creates createdAt and updatedAt fields
 });

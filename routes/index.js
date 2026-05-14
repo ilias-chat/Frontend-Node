@@ -1,9 +1,19 @@
 const express = require('express');
+const createUserRoutes = require('./userRoutes');
 
-const router = express.Router();
+/**
+ * @param {{ verifyIdToken?: (token: string) => Promise<{ uid: string, email?: string }> }} [userRouteOptions]
+ */
+function createRootRouter(userRouteOptions = {}) {
+  const router = express.Router();
 
-router.get('/', (req, res) => {
-  res.json({ message: 'Hello World' });
-});
+  router.get('/', (req, res) => {
+    res.json({ message: 'Hello World' });
+  });
 
-module.exports = router;
+  router.use('/api/users', createUserRoutes(userRouteOptions));
+
+  return router;
+}
+
+module.exports = createRootRouter;

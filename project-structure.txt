@@ -1,12 +1,21 @@
-/TRWM-backend
-├── /config             # Database connection (Mongoose) and Environment variables
-├── /controllers        # Logic for handling requests and responses
-├── /middleware         # JWT validation and error handling 
-├── /models             # Mongoose schemas (Players, Comments, Users) 
-├── /routes             # API Route definitions (using Express) 
-├── /services           # External API calls (API-Football) and LLM integration [cite: 32, 35]
-├── /tests              # Unit tests for routes and logic 
-├── /utils              # Helper functions (Geolocation formatting, etc.) 
-├── swagger.json        # API Documentation 
-├── server.js           # Entry point
-└── .env                # Secret keys and DB URI
+backend-node/
+├── config/
+│   └── db.js            <-- (Done)
+├── controllers/
+│   ├── playerController.js
+│   └── userController.js
+├── middleware/
+│   ├── authMiddleware.js <-- (For Firebase/Admin checks)
+├── models/
+│   ├── Player.js        <-- (Done)
+│   └── User.js          <-- (Done)
+├── routes/
+│   ├── playerRoutes.js
+│   └── userRoutes.js
+├── services/
+│   └── footballApiService.js <-- (Logic for external API)
+├── tests/
+│   └── player.test.js   <-- (Done/Expandable)
+├── .github/workflows/   <-- (Done)
+├── Dockerfile           <-- (Done)
+└── server.js            <-- (Done)
