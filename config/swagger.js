@@ -24,7 +24,8 @@ const options = {
           type: 'http',
           scheme: 'bearer',
           bearerFormat: 'JWT',
-          description: 'Firebase ID token from the client after sign-in.',
+          description:
+            'Firebase **ID token** (JWT) from the client after sign-in. Paste **only** the JWT here — Swagger adds the `Bearer ` prefix automatically.',
         },
       },
       schemas: {

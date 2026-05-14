@@ -5,10 +5,21 @@ function initializeFirebaseAdmin() {
     return admin.app();
   }
 
-  if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-    const cred = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (raw && String(raw).trim()) {
+    let cred;
+    try {
+      cred = JSON.parse(String(raw).trim());
+    } catch (e) {
+      console.error('FIREBASE_SERVICE_ACCOUNT_JSON is not valid JSON:', e.message);
+      throw e;
+    }
+    if (!cred.project_id) {
+      console.error('FIREBASE_SERVICE_ACCOUNT_JSON is missing project_id');
+    }
     return admin.initializeApp({
       credential: admin.credential.cert(cred),
+      projectId: cred.project_id,
     });
   }
 

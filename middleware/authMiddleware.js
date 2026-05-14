@@ -12,14 +12,20 @@ function createAuthMiddleware(options = {}) {
     if (!header || !header.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'Missing or invalid Authorization header' });
     }
-    const idToken = header.slice(7).trim();
+    let idToken = header.slice(7).trim();
+    // Swagger UI already sends "Bearer "; users often paste "Bearer eyJ..." and end up with "Bearer Bearer eyJ...".
+    if (idToken.startsWith('Bearer ')) {
+      idToken = idToken.slice(7).trim();
+    }
     if (!idToken) {
       return res.status(401).json({ error: 'Missing token' });
     }
     try {
       req.firebase = await verifyIdToken(idToken);
       next();
-    } catch {
+    } catch (err) {
+      const code = err?.code || err?.errorInfo?.code;
+      console.error('Firebase verifyIdToken failed:', code || err?.message || err);
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
   }
