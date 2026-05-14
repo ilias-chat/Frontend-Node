@@ -71,6 +71,11 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
+      - name: Write Cloud Run env file (JSON — safe for Atlas URIs)
+        env:
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+        run: node scripts/write-cloudrun-env.js
+
       - name: Deploy to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
         with:
@@ -78,8 +83,6 @@ jobs:
           region: ${{ env.GCP_REGION_NAME }}
           project_id: ${{ env.GCP_PROJECT }}
           image: ${{ env.DOCKERHUB_USER }}/${{ env.DOCKERHUB_REPO_NAME }}:${{ github.sha }}
-          # Quoted value: URIs contain "=" and "&" which break naive KEY=VALUE parsing.
-          env_vars: |-
-            MONGO_URI="${{ secrets.MONGO_URI }}"
+          env_vars_file: cloudrun-env.json
           env_vars_update_strategy: merge
           flags: --allow-unauthenticated --port=3000

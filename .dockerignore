@@ -8,3 +8,4 @@ npm-debug.log*
 .cursor
 coverage
 .vscode
+cloudrun-env.json

@@ -4,6 +4,12 @@ const request = require('supertest');
 const { createApp } = require('../app');
 
 describe('HTTP API', () => {
+  test('GET /health returns ok', async () => {
+    const app = createApp();
+    const res = await request(app).get('/health').expect(200).expect('Content-Type', /text/);
+    assert.strictEqual(res.text, 'ok');
+  });
+
   test('GET / returns Hello World JSON', async () => {
     const app = createApp();
     const res = await request(app).get('/').expect(200).expect('Content-Type', /json/);
