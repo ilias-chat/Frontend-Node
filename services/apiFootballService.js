@@ -18,13 +18,40 @@ class ApiFootballError extends Error {
 }
 
 /**
+ * Parse a latitude or longitude from API-Football (often strings, sometimes empty).
  * @param {unknown} v
+ * @param {'lat' | 'lng'} kind
  * @returns {number|null}
  */
-function toFiniteNumber(v) {
-  const n = typeof v === 'string' ? Number(v) : v;
-  if (typeof n !== 'number' || !Number.isFinite(n)) return null;
+function parseGeoCoord(v, kind) {
+  if (v == null) return null;
+  const raw = typeof v === 'string' ? v.trim() : v;
+  if (raw === '' || raw === 'null' || raw === 'undefined') return null;
+  const n = typeof raw === 'number' ? raw : Number.parseFloat(String(raw));
+  if (!Number.isFinite(n)) return null;
+  if (kind === 'lat' && (n < -90 || n > 90)) return null;
+  if (kind === 'lng' && (n < -180 || n > 180)) return null;
   return n;
+}
+
+/**
+ * @param {Record<string, unknown>} o venue-like object from /teams or /venues
+ * @returns {{ lat: number, lng: number } | null}
+ */
+function extractVenueCoords(o) {
+  if (!o || typeof o !== 'object') return null;
+  const lat = parseGeoCoord(o.lat ?? o.latitude, 'lat');
+  const lng = parseGeoCoord(o.lng ?? o.longitude ?? o.lon, 'lng');
+  if (lat != null && lng != null) {
+    return { lat, lng };
+  }
+  const c = o.coordinates;
+  if (Array.isArray(c) && c.length >= 2) {
+    const lng2 = parseGeoCoord(c[0], 'lng');
+    const lat2 = parseGeoCoord(c[1], 'lat');
+    if (lat2 != null && lng2 != null) return { lat: lat2, lng: lng2 };
+  }
+  return null;
 }
 
 /**
@@ -99,10 +126,21 @@ function createApiFootballService(cfg = {}) {
     if (!row?.team) {
       throw new ApiFootballError(`Team ${teamId} not found`, 404);
     }
-    const venueId = row.venue?.id != null ? Number(row.venue.id) : null;
-    const venueName = row.venue?.name ? String(row.venue.name) : row.team?.name ? String(row.team.name) : '';
-    const teamName = row.team?.name ? String(row.team.name) : `Team ${teamId}`;
-    return { teamName, venueId, venueName: venueName || teamName };
+    const venue = row.venue && typeof row.venue === 'object' ? row.venue : {};
+    const team = row.team && typeof row.team === 'object' ? row.team : {};
+    const venueId = venue.id != null ? Number(venue.id) : null;
+    const venueName = venue.name ? String(venue.name) : team.name ? String(team.name) : '';
+    const teamName = team.name ? String(team.name) : `Team ${teamId}`;
+    const embeddedCoords = extractVenueCoords(/** @type {Record<string, unknown>} */ (venue));
+    const city = venue.city != null ? String(venue.city) : team.city != null ? String(team.city) : '';
+    const country = team.country != null ? String(team.country) : '';
+    return {
+      teamName,
+      venueId: venueId != null && Number.isFinite(venueId) ? venueId : null,
+      venueName: venueName || teamName,
+      embeddedCoords,
+      geocodeHint: { city, country },
+    };
   }
 
   /**
@@ -112,17 +150,56 @@ function createApiFootballService(cfg = {}) {
   async function fetchVenuePoint(venueId) {
     const data = await request('/venues', { id: venueId });
     const row = Array.isArray(data.response) ? data.response[0] : null;
-    const lat = toFiniteNumber(row?.lat ?? row?.latitude);
-    const lng = toFiniteNumber(row?.lng ?? row?.longitude ?? row?.lon);
-    if (lat == null || lng == null) {
+    const coords = row && typeof row === 'object' ? extractVenueCoords(/** @type {Record<string, unknown>} */ (row)) : null;
+    if (!coords) {
       throw new ApiFootballError(`Venue ${venueId} has no coordinates`, 422);
     }
     const name = row?.name ? String(row.name) : '';
     return {
-      lng,
-      lat,
+      lng: coords.lng,
+      lat: coords.lat,
       venueName: name,
     };
+  }
+
+  /**
+   * Fallback when API-Football omits venue coordinates (common on some tiers/venues).
+   * Uses OpenStreetMap Nominatim (one request per import). Respect their usage policy.
+   * @param {{ city: string, country: string }} hint
+   * @param {string} venueName
+   */
+  async function geocodeVenueNominatim(hint, venueName) {
+    const parts = [venueName, hint.city, hint.country].filter((s) => s && String(s).trim());
+    const q = parts.join(', ').trim();
+    if (!q) {
+      throw new ApiFootballError('Cannot geocode venue: missing name and location hint', 422);
+    }
+    const url = new URL('https://nominatim.openstreetmap.org/search');
+    url.searchParams.set('format', 'json');
+    url.searchParams.set('limit', '1');
+    url.searchParams.set('q', q);
+
+    const res = await fetchImpl(url.toString(), {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'TRWM-backend/1.0 (venue geocode fallback; https://github.com/)',
+      },
+    });
+    if (!res.ok) {
+      throw new ApiFootballError(`Geocoding HTTP ${res.status}`, 502);
+    }
+    /** @type {{ lat?: string, lon?: string }[]} */
+    const arr = await res.json();
+    const first = Array.isArray(arr) ? arr[0] : null;
+    const lat = first?.lat != null ? parseGeoCoord(first.lat, 'lat') : null;
+    const lng = first?.lon != null ? parseGeoCoord(first.lon, 'lng') : null;
+    if (lat == null || lng == null) {
+      throw new ApiFootballError(
+        `Venue coordinates unavailable from API-Football and geocoding found no match for: ${q}`,
+        422
+      );
+    }
+    return { lat, lng, venueName };
   }
 
   /**
@@ -196,13 +273,34 @@ function createApiFootballService(cfg = {}) {
     let venueLabel = teamRow.venueName;
     /** @type {{ type: 'Point', coordinates: [number, number] }} */
     let location;
-    if (teamRow.venueId != null && Number.isFinite(teamRow.venueId)) {
-      const pt = await fetchVenuePoint(teamRow.venueId);
-      location = { type: 'Point', coordinates: [pt.lng, pt.lat] };
-      if (pt.venueName) venueLabel = pt.venueName;
-    } else {
-      throw new ApiFootballError('Team has no venue id; cannot resolve coordinates', 422);
+
+    let coords = teamRow.embeddedCoords;
+    if (!coords && teamRow.venueId != null && Number.isFinite(teamRow.venueId)) {
+      try {
+        const pt = await fetchVenuePoint(teamRow.venueId);
+        coords = { lat: pt.lat, lng: pt.lng };
+        if (pt.venueName) venueLabel = pt.venueName;
+      } catch (err) {
+        const missingCoords =
+          err instanceof ApiFootballError &&
+          err.statusCode === 422 &&
+          /no coordinates/i.test(err.message);
+        if (!missingCoords) {
+          throw err;
+        }
+        const geo = await geocodeVenueNominatim(teamRow.geocodeHint, teamRow.venueName);
+        coords = { lat: geo.lat, lng: geo.lng };
+      }
     }
+
+    if (!coords) {
+      throw new ApiFootballError(
+        'Could not resolve stadium coordinates (no coords on team venue, and no venue id for /venues or geocode)',
+        422
+      );
+    }
+
+    location = { type: 'Point', coordinates: [coords.lng, coords.lat] };
 
     const rawPlayers = await fetchAllPlayersPages(teamId, season);
     const players = [];
