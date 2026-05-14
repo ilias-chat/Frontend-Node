@@ -7,6 +7,24 @@ const createUserRoutes = require('./userRoutes');
 function createRootRouter(userRouteOptions = {}) {
   const router = express.Router();
 
+  /**
+   * @openapi
+   * /:
+   *   get:
+   *     tags: [System]
+   *     summary: API root
+   *     responses:
+   *       '200':
+   *         description: Welcome payload
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                   example: Hello World
+   */
   router.get('/', (req, res) => {
     res.json({ message: 'Hello World' });
   });
