@@ -17,6 +17,8 @@ const options = {
     tags: [
       { name: 'System', description: 'Health and root' },
       { name: 'Users', description: 'Profiles, auth exchange, admin' },
+      { name: 'Players', description: 'Player discovery, comments, geo' },
+      { name: 'Admin', description: 'API-Football import and moderation' },
     ],
     components: {
       securitySchemes: {
@@ -25,7 +27,7 @@ const options = {
           scheme: 'bearer',
           bearerFormat: 'JWT',
           description:
-            'Firebase **ID token** (JWT) from the client after sign-in. Paste **only** the JWT here — Swagger adds the `Bearer ` prefix automatically.',
+            'Firebase **ID token** (JWT) from the client after sign-in. Paste **only** the JWT here — Swagger adds the `Bearer ` prefix automatically. **Important:** clicking Authorize only saves this value in the browser; it does **not** call your API or Firebase. Your token is checked only when you **Execute** a request; invalid values then return 401.',
         },
       },
       schemas: {
@@ -77,6 +79,25 @@ const options = {
             role: { type: 'string', enum: ['user', 'admin'] },
           },
         },
+        ImportPlayersBody: {
+          type: 'object',
+          required: ['leagueId', 'teamId', 'season'],
+          properties: {
+            leagueId: { type: 'integer', description: 'API-Football league id' },
+            teamId: { type: 'integer', description: 'API-Football team id' },
+            season: { type: 'integer', description: 'Season year (e.g. 2023)' },
+          },
+        },
+        AddCommentBody: {
+          type: 'object',
+          required: ['text', 'rating', 'lat', 'lng'],
+          properties: {
+            text: { type: 'string', maxLength: 1000 },
+            rating: { type: 'number', minimum: 0, maximum: 5 },
+            lat: { type: 'number', minimum: -90, maximum: 90 },
+            lng: { type: 'number', minimum: -180, maximum: 180 },
+          },
+        },
       },
     },
   },
@@ -84,6 +105,8 @@ const options = {
     path.join(rootDir, 'app.js'),
     path.join(rootDir, 'routes', 'index.js'),
     path.join(rootDir, 'routes', 'userRoutes.js'),
+    path.join(rootDir, 'routes', 'adminRoutes.js'),
+    path.join(rootDir, 'routes', 'playerRoutes.js'),
   ],
 };
 

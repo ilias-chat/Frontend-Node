@@ -4,7 +4,7 @@ const createRootRouter = require('./routes');
 const { buildSwaggerSpec } = require('./config/swagger');
 
 /**
- * @param {{ verifyIdToken?: (token: string) => Promise<{ uid: string, email?: string }> }} [options] Test-only Firebase override.
+ * @param {{ verifyIdToken?: (token: string) => Promise<{ uid: string, email?: string }>, apiFootballService?: object }} [options] Test-only overrides (Firebase verify, API-Football service mock).
  */
 function createApp(options = {}) {
   const app = express();

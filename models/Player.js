@@ -81,6 +81,19 @@ const playerSchema = new mongoose.Schema({
       type: String, 
       required: false // Can be a URL or Base64 from camera
   },
+  position: {
+      type: String,
+      trim: true,
+      index: true,
+  },
+  stats: {
+      type: mongoose.Schema.Types.Mixed,
+      default: undefined,
+  },
+  venueName: {
+      type: String,
+      trim: true,
+  },
   registrationDate: { 
       type: Date, 
       default: Date.now,

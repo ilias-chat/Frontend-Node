@@ -17,6 +17,19 @@ describe('Player model validation', () => {
     assert.strictEqual(err, undefined);
   });
 
+  test('accepts optional position stats and venueName', () => {
+    const player = new Player({
+      name: 'Jane',
+      team: 'Real Madrid',
+      league: 'La Liga',
+      location: validPoint,
+      position: 'Attacker',
+      stats: { goals: 10, appearances: 20 },
+      venueName: 'Santiago Bernabéu',
+    });
+    assert.strictEqual(player.validateSync(), undefined);
+  });
+
   test('rejects comment text longer than 1000 characters', () => {
     const player = new Player({
       name: 'A',

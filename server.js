@@ -15,12 +15,22 @@ async function main() {
       console.log(`Server listening on port ${PORT}`);
       resolve(server);
     });
-    server.on('error', reject);
+    server.once('error', (err) => {
+      if (err && err.code === 'EADDRINUSE') {
+        console.error(
+          `Port ${PORT} is already in use. Another process (often another Node server) is bound to this port.\n` +
+            `Stop it, or run: npm run dev:clean\n` +
+            `On Windows you can also: netstat -ano | findstr :${PORT}  then  taskkill /PID <pid> /F`
+        );
+      }
+      reject(err);
+    });
   });
 
   await connectDatabase();
 }
 
-main().catch(() => {
+main().catch((err) => {
+  console.error('Startup failed:', err && err.message ? err.message : err);
   process.exit(1);
 });

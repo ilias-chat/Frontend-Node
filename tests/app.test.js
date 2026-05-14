@@ -23,6 +23,8 @@ describe('HTTP API', () => {
     assert.strictEqual(res.body.openapi, '3.0.3');
     assert.ok(res.body.paths['/health']);
     assert.ok(res.body.paths['/api/users/sync']);
+    assert.ok(res.body.paths['/api/players']);
+    assert.ok(res.body.paths['/api/admin/import-players']);
     assert.ok(res.body.components?.securitySchemes?.bearerAuth);
   });
 });

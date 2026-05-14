@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
+    "dev:clean": "npx --yes kill-port@2.0.1 3000 && node --watch server.js",
     "test": "node scripts/run-tests.js"
   },
   "engines": {

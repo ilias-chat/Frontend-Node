@@ -1,8 +1,10 @@
 const express = require('express');
 const createUserRoutes = require('./userRoutes');
+const createAdminRoutes = require('./adminRoutes');
+const createPlayerRoutes = require('./playerRoutes');
 
 /**
- * @param {{ verifyIdToken?: (token: string) => Promise<{ uid: string, email?: string }> }} [userRouteOptions]
+ * @param {{ verifyIdToken?: (token: string) => Promise<{ uid: string, email?: string }>, apiFootballService?: object }} [userRouteOptions]
  */
 function createRootRouter(userRouteOptions = {}) {
   const router = express.Router();
@@ -30,6 +32,8 @@ function createRootRouter(userRouteOptions = {}) {
   });
 
   router.use('/api/users', createUserRoutes(userRouteOptions));
+  router.use('/api/admin', createAdminRoutes(userRouteOptions));
+  router.use('/api/players', createPlayerRoutes(userRouteOptions));
 
   return router;
 }
