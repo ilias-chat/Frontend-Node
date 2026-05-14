@@ -1,0 +1,74 @@
+# CD: build Docker image → Docker Hub → Google Cloud Run
+#
+# Secrets (GitHub → Settings → Secrets and variables → Actions → Secrets):
+#   DOCKERHUB_USERNAME   Docker Hub namespace (username or org)
+#   DOCKERHUB_TOKEN      Docker Hub Access Token (Read & Write)
+#   GCP_SA_KEY           Service account JSON key for deploying to Cloud Run
+#
+# You can store GCP + repo name as either Secrets or Variables. This workflow reads
+# Secrets first (matches common setups), then falls back to Variables.
+#
+#   GCP_PROJECT_ID       GCP project ID (e.g. my-project-123)
+#   GCP_REGION           e.g. europe-west1
+#   CLOUD_RUN_SERVICE    Cloud Run service name
+#   DOCKERHUB_REPO       Hub repo name (default: ic844-node-backend if unset)
+
+name: CD
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    env:
+      DOCKERHUB_REPO_NAME: ${{ secrets.DOCKERHUB_REPO || vars.DOCKERHUB_REPO || 'ic844-node-backend' }}
+      GCP_PROJECT: ${{ secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
+      GCP_REGION_NAME: ${{ secrets.GCP_REGION || vars.GCP_REGION }}
+      CLOUD_RUN_NAME: ${{ secrets.CLOUD_RUN_SERVICE || vars.CLOUD_RUN_SERVICE }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPO_NAME }}:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPO_NAME }}:${{ github.sha }}
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.CLOUD_RUN_NAME }}
+          region: ${{ env.GCP_REGION_NAME }}
+          project_id: ${{ env.GCP_PROJECT }}
+          image: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPO_NAME }}:${{ github.sha }}
+          # Public HTTPS URL (restrict later with IAM / Cloud Armor). Cloud Run sets PORT for the container.
+          flags: --allow-unauthenticated --port=3000
