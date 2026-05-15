@@ -5,14 +5,24 @@ const createRootRouter = require('./routes');
 const { buildSwaggerSpec } = require('./config/swagger');
 
 function parseCorsOrigins() {
+  /** Local dev: Angular CLI often :4200, Ionic CLI often :8100; native wrappers use custom schemes */
+  const localDevOrigins = [
+    'http://localhost:4200',
+    'http://127.0.0.1:4200',
+    'http://localhost:8100',
+    'http://127.0.0.1:8100',
+    'ionic://localhost',
+    'capacitor://localhost',
+  ];
   const raw = process.env.FRONTEND_ORIGIN || process.env.CORS_ORIGINS || '';
-  if (!raw.trim()) {
-    return ['http://localhost:4200', 'http://127.0.0.1:4200', 'ionic://localhost', 'capacitor://localhost'];
-  }
-  return raw
+  const fromEnv = raw
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
+  if (fromEnv.length === 0) {
+    return localDevOrigins;
+  }
+  return [...new Set([...fromEnv, ...localDevOrigins])];
 }
 
 /**
