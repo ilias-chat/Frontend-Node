@@ -72,7 +72,7 @@ mongoDescribe('Players API — integration (requires MONGO_URI)', { concurrency:
     await User.deleteMany({ firebaseUID: { $in: [uid, adminUid] } });
     await Player.deleteMany({ externalId: { $in: [910001, 910002, 910003] } });
     await User.create([
-      { firebaseUID: uid, email: 'playeruser@test.com', role: 'user' },
+      { firebaseUID: uid, email: 'playeruser@test.com', name: 'Test Player', role: 'user' },
       { firebaseUID: adminUid, email: 'playeradmin@test.com', role: 'admin' },
     ]);
   });
@@ -177,6 +177,7 @@ mongoDescribe('Players API — integration (requires MONGO_URI)', { concurrency:
       .send({ text: 'Solid season', rating: 4, lat: 51.5, lng: -0.12 })
       .expect(201);
     assert.strictEqual(postRes.body.author, uid);
+    assert.strictEqual(postRes.body.authorName, 'Test Player');
     const commentId = postRes.body._id;
 
     const listRes = await request(appUser).get(`/api/players/${p._id}/comments`).expect(200);

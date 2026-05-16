@@ -36,9 +36,15 @@ const locationSchema = new mongoose.Schema(
 );
 
 const commentSchema = new mongoose.Schema({
-  author: { 
-      type: String, 
-      required: true 
+  /** Firebase UID — used to verify delete ownership */
+  author: {
+      type: String,
+      required: true,
+  },
+  /** Display name at time of posting (from Mongo user profile) */
+  authorName: {
+      type: String,
+      trim: true,
   },
   text: { 
       type: String, 

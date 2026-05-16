@@ -2,6 +2,19 @@ const mongoose = require('mongoose');
 const Player = require('../models/Player');
 const User = require('../models/User');
 
+/** Human-readable label for scout reports; keeps author as Firebase UID for ACL. */
+function resolveAuthorDisplayName(user, firebase) {
+  const fromProfile = user?.name?.trim();
+  if (fromProfile) {
+    return fromProfile;
+  }
+  const email = user?.email?.trim() || firebase?.email?.trim();
+  if (email && email.includes('@')) {
+    return email.split('@')[0];
+  }
+  return 'Fan';
+}
+
 /**
  * @param {import('express').Request} req
  * @param {import('express').Response} res
@@ -56,12 +69,16 @@ async function addComment(req, res, next) {
       coordinates: [longitude, latitude],
     };
 
+    const user = await User.findOne({ firebaseUID: req.firebase.uid }).lean();
+    const authorName = resolveAuthorDisplayName(user, req.firebase);
+
     const player = await Player.findByIdAndUpdate(
       id,
       {
         $push: {
           comments: {
             author: req.firebase.uid,
+            authorName,
             text: text.trim(),
             rating: r,
             location,
