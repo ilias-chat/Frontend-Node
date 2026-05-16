@@ -98,6 +98,10 @@ mongoDescribe('Players API — integration (requires MONGO_URI)', { concurrency:
     assert.strictEqual(res.body.playersProcessed, 2);
     const count = await Player.countDocuments({ externalId: { $in: [910001, 910002] } });
     assert.strictEqual(count, 2);
+    const withPhoto = await Player.findOne({ externalId: 910001 }).lean();
+    assert.strictEqual(withPhoto?.image, 'https://example.com/a.png');
+    const withoutPhoto = await Player.findOne({ externalId: 910002 }).lean();
+    assert.ok(!withoutPhoto?.image);
   });
 
   test('non-admin cannot import', async () => {

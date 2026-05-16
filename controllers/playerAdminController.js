@@ -2,6 +2,24 @@ const mongoose = require('mongoose');
 const Player = require('../models/Player');
 const { ApiFootballError } = require('../services/apiFootballService');
 
+/** Fields written on import upsert (`image` only when API-Football provides a photo URL). */
+function buildPlayerImportSet(doc) {
+  const set = {
+    name: doc.name,
+    team: doc.team,
+    league: doc.league,
+    externalId: doc.externalId,
+    position: doc.position,
+    stats: doc.stats,
+    venueName: doc.venueName,
+    location: doc.location,
+  };
+  if (doc.image) {
+    set.image = doc.image;
+  }
+  return set;
+}
+
 /**
  * @param {import('express').Request} req
  * @param {import('express').Response} res
@@ -37,17 +55,7 @@ async function importPlayers(req, res, next, apiFootballService) {
       updateOne: {
         filter: { externalId: doc.externalId },
         update: {
-          $set: {
-            name: doc.name,
-            team: doc.team,
-            league: doc.league,
-            image: doc.image,
-            externalId: doc.externalId,
-            position: doc.position,
-            stats: doc.stats,
-            venueName: doc.venueName,
-            location: doc.location,
-          },
+          $set: buildPlayerImportSet(doc),
           $setOnInsert: { registrationDate: new Date() },
         },
         upsert: true,

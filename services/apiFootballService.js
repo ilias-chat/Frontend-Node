@@ -57,6 +57,47 @@ function extractVenueCoords(o) {
 /**
  * @param {{ apiKey?: string, baseUrl?: string, fetch?: typeof fetch }} [cfg]
  */
+/**
+ * Map one API-Football `/players` response row to a Mongo import document.
+ * API-Football exposes headshots on `player.photo` (https URL).
+ * @param {unknown} row
+ * @param {string} teamName
+ * @param {string} leagueName
+ * @param {string} venueName
+ * @param {{ type: 'Point', coordinates: [number, number] }} location
+ */
+function mapImportPlayerRow(row, teamName, leagueName, venueName, location) {
+  const p = row?.player;
+  if (!p || p.id == null) return null;
+  const externalId = Number(p.id);
+  if (!Number.isFinite(externalId)) return null;
+
+  const stats = row?.statistics != null ? row.statistics : undefined;
+  let position;
+  if (Array.isArray(row?.statistics) && row.statistics[0]?.games?.position != null) {
+    position = String(row.statistics[0].games.position);
+  } else if (p.position != null) {
+    position = String(p.position);
+  } else {
+    position = 'Unknown';
+  }
+
+  const name = p.name ? String(p.name) : `Player ${externalId}`;
+  const image = p.photo ? String(p.photo).trim() : undefined;
+
+  return {
+    name,
+    team: teamName,
+    league: leagueName,
+    image: image || undefined,
+    externalId,
+    position,
+    stats,
+    venueName,
+    location,
+  };
+}
+
 function createApiFootballService(cfg = {}) {
   const apiKey = cfg.apiKey ?? process.env.API_FOOTBALL_KEY;
   const baseUrl = (cfg.baseUrl ?? DEFAULT_BASE).replace(/\/$/, '');
@@ -223,41 +264,6 @@ function createApiFootballService(cfg = {}) {
   }
 
   /**
-   * @param {unknown} row
-   */
-  function mapPlayerRow(row, teamName, leagueName, venueName, location) {
-    const p = row?.player;
-    if (!p || p.id == null) return null;
-    const externalId = Number(p.id);
-    if (!Number.isFinite(externalId)) return null;
-
-    const stats = row?.statistics != null ? row.statistics : undefined;
-    let position;
-    if (Array.isArray(row?.statistics) && row.statistics[0]?.games?.position != null) {
-      position = String(row.statistics[0].games.position);
-    } else if (p.position != null) {
-      position = String(p.position);
-    } else {
-      position = 'Unknown';
-    }
-
-    const name = p.name ? String(p.name) : `Player ${externalId}`;
-    const image = p.photo ? String(p.photo) : undefined;
-
-    return {
-      name,
-      team: teamName,
-      league: leagueName,
-      image,
-      externalId,
-      position,
-      stats,
-      venueName,
-      location,
-    };
-  }
-
-  /**
    * @param {{ leagueId: number, teamId: number, season: number }} params
    */
   async function buildImportPayloads(params) {
@@ -305,7 +311,7 @@ function createApiFootballService(cfg = {}) {
     const rawPlayers = await fetchAllPlayersPages(teamId, season);
     const players = [];
     for (const row of rawPlayers) {
-      const doc = mapPlayerRow(row, teamRow.teamName, leagueName, venueLabel, location);
+      const doc = mapImportPlayerRow(row, teamRow.teamName, leagueName, venueLabel, location);
       if (doc) players.push(doc);
     }
 
@@ -334,5 +340,6 @@ function getApiFootballService() {
 module.exports = {
   createApiFootballService,
   getApiFootballService,
+  mapImportPlayerRow,
   ApiFootballError,
 };
