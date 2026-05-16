@@ -259,6 +259,15 @@ mongoDescribe('Players API — integration (requires MONGO_URI)', { concurrency:
       .delete(`/api/players/${p._id}/comments/${cid2}`)
       .set('Authorization', 'Bearer ok')
       .expect(204);
+
+    const myComments = await request(appUser)
+      .get('/api/users/me/comments')
+      .set('Authorization', 'Bearer ok')
+      .expect(200);
+    assert.ok(Array.isArray(myComments.body.data));
+    assert.ok(myComments.body.data.some((c) => c.text === 'Solid season'));
+    assert.ok(myComments.body.data.every((c) => c.author === uid));
+    assert.ok(myComments.body.data[0].player?.name);
   });
 
   test('admin deletes player by id', async () => {

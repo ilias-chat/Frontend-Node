@@ -122,6 +122,7 @@ const playerSchema = new mongoose.Schema({
 
 playerSchema.index({ location: '2dsphere' });
 playerSchema.index({ 'comments.location': '2dsphere' });
+playerSchema.index({ 'comments.author': 1 });
 
 const Player = mongoose.models.Player || mongoose.model('Player', playerSchema);
 

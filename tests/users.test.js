@@ -17,6 +17,12 @@ function mockVerify(claims = { uid: 'firebase-test-1', email: 'u1@test.com' }) {
 }
 
 describe('Users API — auth (no database)', () => {
+  test('GET /api/users/me/comments without Authorization returns 401', async () => {
+    const app = createApp({ verifyIdToken: mockVerify() });
+    const res = await request(app).get('/api/users/me/comments').expect(401);
+    assert.ok(res.body.error);
+  });
+
   test('GET /api/users/me without Authorization returns 401', async () => {
     const app = createApp({ verifyIdToken: mockVerify() });
     const res = await request(app).get('/api/users/me').expect(401);

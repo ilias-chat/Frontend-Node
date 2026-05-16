@@ -1,5 +1,6 @@
 const express = require('express');
 const userController = require('../controllers/userController');
+const userCommentController = require('../controllers/userCommentController');
 const { createAuthMiddleware } = require('../middleware/authMiddleware');
 
 /**
@@ -111,6 +112,31 @@ function createUserRoutes(options = {}) {
    *               $ref: '#/components/schemas/Error'
    */
   router.get('/me', verifyFirebaseToken, loadMongoUser, userController.getMe);
+
+  /**
+   * @openapi
+   * /api/users/me/comments:
+   *   get:
+   *     tags: [Users]
+   *     summary: List scout reports (comments) authored by the current user
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: query
+   *         name: page
+   *         schema:
+   *           type: integer
+   *       - in: query
+   *         name: limit
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       '200':
+   *         description: Paginated comments with player summary
+   *       '401':
+   *         description: Invalid token
+   */
+  router.get('/me/comments', verifyFirebaseToken, userCommentController.listMyComments);
 
   /**
    * @openapi
