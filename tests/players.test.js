@@ -21,6 +21,22 @@ const londonPoint = { type: 'Point', coordinates: [-0.1278, 51.5074] };
 
 function mockApiFootballService() {
   return {
+    async fetchLeaguesForSeason(season) {
+      return [
+        {
+          id: 39,
+          name: 'Test League',
+          logo: 'https://example.com/league.png',
+          country: 'England',
+        },
+      ];
+    },
+    async fetchTeamsForLeague(leagueId, season) {
+      if (leagueId !== 39) return [];
+      return [
+        { id: 33, name: 'Test FC', logo: 'https://example.com/team.png' },
+      ];
+    },
     async buildImportPayloads() {
       return {
         players: [
@@ -81,6 +97,35 @@ mongoDescribe('Players API — integration (requires MONGO_URI)', { concurrency:
     await User.deleteMany({ firebaseUID: { $in: [uid, adminUid] } });
     await Player.deleteMany({ externalId: { $in: [910001, 910002, 910003] } });
     await mongoose.disconnect();
+  });
+
+  test('GET /api/admin/leagues returns league options', async () => {
+    const app = createApp({
+      verifyIdToken: mockVerify({ uid: adminUid, email: 'playeradmin@test.com' }),
+      apiFootballService: mockApiFootballService(),
+    });
+    const res = await request(app)
+      .get('/api/admin/leagues')
+      .query({ season: 2024 })
+      .set('Authorization', 'Bearer ok')
+      .expect(200);
+    assert.ok(Array.isArray(res.body.data));
+    assert.strictEqual(res.body.data[0].id, 39);
+    assert.strictEqual(res.body.data[0].name, 'Test League');
+  });
+
+  test('GET /api/admin/teams returns team options for league', async () => {
+    const app = createApp({
+      verifyIdToken: mockVerify({ uid: adminUid, email: 'playeradmin@test.com' }),
+      apiFootballService: mockApiFootballService(),
+    });
+    const res = await request(app)
+      .get('/api/admin/teams')
+      .query({ leagueId: 39, season: 2024 })
+      .set('Authorization', 'Bearer ok')
+      .expect(200);
+    assert.ok(Array.isArray(res.body.data));
+    assert.strictEqual(res.body.data[0].id, 33);
   });
 
   test('admin import-players upserts squad', async () => {

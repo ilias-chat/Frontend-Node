@@ -54,6 +54,67 @@ function createAdminRoutes(options = {}) {
    *       '422':
    *         description: API-Football validation or venue data error
    */
+  /**
+   * @openapi
+   * /api/admin/leagues:
+   *   get:
+   *     tags: [Admin]
+   *     summary: List leagues for a season (API-Football)
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: query
+   *         name: season
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       '200':
+   *         description: League options with id, name, logo
+   */
+  router.get('/leagues', ...adminChain, (req, res, next) => {
+    let apiFootballService;
+    try {
+      apiFootballService = resolveApiFootballService();
+    } catch (err) {
+      return res.status(503).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+    return playerAdminController.listLeagues(req, res, next, apiFootballService);
+  });
+
+  /**
+   * @openapi
+   * /api/admin/teams:
+   *   get:
+   *     tags: [Admin]
+   *     summary: List teams for a league and season (API-Football)
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: query
+   *         name: leagueId
+   *         required: true
+   *         schema:
+   *           type: integer
+   *       - in: query
+   *         name: season
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       '200':
+   *         description: Team options with id, name, logo
+   */
+  router.get('/teams', ...adminChain, (req, res, next) => {
+    let apiFootballService;
+    try {
+      apiFootballService = resolveApiFootballService();
+    } catch (err) {
+      return res.status(503).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+    return playerAdminController.listTeams(req, res, next, apiFootballService);
+  });
+
   router.post('/import-players', ...adminChain, (req, res, next) => {
     let apiFootballService;
     try {

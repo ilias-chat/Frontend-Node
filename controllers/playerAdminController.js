@@ -105,4 +105,49 @@ async function deletePlayer(req, res, next) {
   }
 }
 
-module.exports = { importPlayers, deletePlayer };
+/**
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ * @param {{ fetchLeaguesForSeason: (season: number) => Promise<object[]>, fetchTeamsForLeague: (leagueId: number, season: number) => Promise<object[]> }} apiFootballService
+ */
+async function listLeagues(req, res, next, apiFootballService) {
+  try {
+    const season = Number(req.query.season);
+    if (!Number.isFinite(season)) {
+      return res.status(400).json({ error: 'season query parameter must be a number' });
+    }
+    const data = await apiFootballService.fetchLeaguesForSeason(season);
+    return res.json({ data });
+  } catch (err) {
+    if (err instanceof ApiFootballError) {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
+    return next(err);
+  }
+}
+
+/**
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ * @param {{ fetchTeamsForLeague: (leagueId: number, season: number) => Promise<object[]> }} apiFootballService
+ */
+async function listTeams(req, res, next, apiFootballService) {
+  try {
+    const leagueId = Number(req.query.leagueId);
+    const season = Number(req.query.season);
+    if (!Number.isFinite(leagueId) || !Number.isFinite(season)) {
+      return res.status(400).json({ error: 'leagueId and season query parameters must be numbers' });
+    }
+    const data = await apiFootballService.fetchTeamsForLeague(leagueId, season);
+    return res.json({ data });
+  } catch (err) {
+    if (err instanceof ApiFootballError) {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
+    return next(err);
+  }
+}
+
+module.exports = { importPlayers, deletePlayer, listLeagues, listTeams };

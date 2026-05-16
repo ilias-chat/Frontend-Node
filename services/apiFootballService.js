@@ -66,6 +66,64 @@ function extractVenueCoords(o) {
  * @param {string} venueName
  * @param {{ type: 'Point', coordinates: [number, number] }} location
  */
+/**
+ * @param {unknown} url
+ * @returns {string|undefined}
+ */
+function normalizeLogoUrl(url) {
+  if (url == null) return undefined;
+  const s = String(url).trim();
+  if (!s || s === 'null') return undefined;
+  if (s.startsWith('http://') || s.startsWith('https://')) return s;
+  return undefined;
+}
+
+/**
+ * @param {unknown[]} rows
+ * @returns {{ id: number, name: string, logo?: string, country?: string, type?: string }[]}
+ */
+function mapLeagueRows(rows) {
+  const seen = new Map();
+  for (const row of rows) {
+    const league = row?.league;
+    if (!league?.id) continue;
+    const id = Number(league.id);
+    if (!Number.isFinite(id) || seen.has(id)) continue;
+    const name = league.name ? String(league.name) : `League ${id}`;
+    const logo =
+      normalizeLogoUrl(league.logo) ?? normalizeLogoUrl(row?.country?.flag);
+    const country = row?.country?.name ? String(row.country.name) : undefined;
+    seen.set(id, {
+      id,
+      name,
+      logo,
+      country,
+      type: league.type ? String(league.type) : undefined,
+    });
+  }
+  return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * @param {unknown[]} rows
+ * @returns {{ id: number, name: string, logo?: string }[]}
+ */
+function mapTeamRows(rows) {
+  const seen = new Map();
+  for (const row of rows) {
+    const team = row?.team;
+    if (!team?.id) continue;
+    const id = Number(team.id);
+    if (!Number.isFinite(id) || seen.has(id)) continue;
+    seen.set(id, {
+      id,
+      name: team.name ? String(team.name) : `Team ${id}`,
+      logo: normalizeLogoUrl(team.logo),
+    });
+  }
+  return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
 function mapImportPlayerRow(row, teamName, leagueName, venueName, location) {
   const p = row?.player;
   if (!p || p.id == null) return null;
@@ -318,6 +376,34 @@ function createApiFootballService(cfg = {}) {
     return { players, teamName: teamRow.teamName, leagueName, venueName: venueLabel };
   }
 
+  /**
+   * @param {number} season
+   */
+  async function fetchLeaguesForSeason(season) {
+    const seasonNum = Number(season);
+    if (!Number.isFinite(seasonNum)) {
+      throw new ApiFootballError('season must be a finite number', 400);
+    }
+    const data = await request('/leagues', { season: seasonNum });
+    const rows = Array.isArray(data.response) ? data.response : [];
+    return mapLeagueRows(rows);
+  }
+
+  /**
+   * @param {number} leagueId
+   * @param {number} season
+   */
+  async function fetchTeamsForLeague(leagueId, season) {
+    const lid = Number(leagueId);
+    const seasonNum = Number(season);
+    if (!Number.isFinite(lid) || !Number.isFinite(seasonNum)) {
+      throw new ApiFootballError('leagueId and season must be finite numbers', 400);
+    }
+    const data = await request('/teams', { league: lid, season: seasonNum });
+    const rows = Array.isArray(data.response) ? data.response : [];
+    return mapTeamRows(rows);
+  }
+
   return {
     request,
     assertLeagueBelongsToTeam,
@@ -325,6 +411,8 @@ function createApiFootballService(cfg = {}) {
     fetchVenuePoint,
     fetchAllPlayersPages,
     buildImportPayloads,
+    fetchLeaguesForSeason,
+    fetchTeamsForLeague,
   };
 }
 
@@ -341,5 +429,7 @@ module.exports = {
   createApiFootballService,
   getApiFootballService,
   mapImportPlayerRow,
+  mapLeagueRows,
+  mapTeamRows,
   ApiFootballError,
 };
