@@ -79,6 +79,37 @@ function normalizeLogoUrl(url) {
 }
 
 /**
+ * Curated top competitions (API-Football league ids), display order.
+ * @see https://www.api-football.com/documentation-v3
+ */
+const TOP_LEAGUE_IDS = [
+  39, // Premier League
+  140, // La Liga
+  135, // Serie A
+  78, // Bundesliga
+  61, // Ligue 1
+  2, // UEFA Champions League
+  3, // UEFA Europa League
+  88, // Eredivisie
+  94, // Primeira Liga
+  40, // Championship
+];
+
+/**
+ * Keep only top leagues, in curated order (max 10).
+ * @param {{ id: number, name: string, logo?: string, country?: string, type?: string }[]} leagues
+ */
+function filterTopLeagues(leagues) {
+  const byId = new Map(leagues.map((l) => [l.id, l]));
+  const result = [];
+  for (const id of TOP_LEAGUE_IDS) {
+    const league = byId.get(id);
+    if (league) result.push(league);
+  }
+  return result;
+}
+
+/**
  * @param {unknown[]} rows
  * @returns {{ id: number, name: string, logo?: string, country?: string, type?: string }[]}
  */
@@ -386,7 +417,7 @@ function createApiFootballService(cfg = {}) {
     }
     const data = await request('/leagues', { season: seasonNum });
     const rows = Array.isArray(data.response) ? data.response : [];
-    return mapLeagueRows(rows);
+    return filterTopLeagues(mapLeagueRows(rows));
   }
 
   /**
@@ -430,6 +461,8 @@ module.exports = {
   getApiFootballService,
   mapImportPlayerRow,
   mapLeagueRows,
+  filterTopLeagues,
+  TOP_LEAGUE_IDS,
   mapTeamRows,
   ApiFootballError,
 };

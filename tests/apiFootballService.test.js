@@ -1,6 +1,12 @@
 const { describe, test } = require('node:test');
 const assert = require('node:assert');
-const { mapImportPlayerRow, mapLeagueRows, mapTeamRows } = require('../services/apiFootballService');
+const {
+  mapImportPlayerRow,
+  mapLeagueRows,
+  mapTeamRows,
+  filterTopLeagues,
+  TOP_LEAGUE_IDS,
+} = require('../services/apiFootballService');
 
 const location = { type: 'Point', coordinates: [-0.1, 51.5] };
 
@@ -40,6 +46,20 @@ describe('mapImportPlayerRow', () => {
     assert.strictEqual(leagues.length, 1);
     assert.strictEqual(leagues[0].id, 39);
     assert.strictEqual(leagues[0].logo, 'https://media.api-sports.io/leagues/39.png');
+  });
+
+  test('filterTopLeagues returns at most 10 in curated order', () => {
+    const all = mapLeagueRows([
+      { league: { id: 999, name: 'Minor League' }, country: { name: 'X' } },
+      { league: { id: 39, name: 'Premier League' }, country: { name: 'England' } },
+      { league: { id: 140, name: 'La Liga' }, country: { name: 'Spain' } },
+      { league: { id: 135, name: 'Serie A' }, country: { name: 'Italy' } },
+    ]);
+    const top = filterTopLeagues(all);
+    assert.ok(top.length <= TOP_LEAGUE_IDS.length);
+    assert.strictEqual(top[0].id, 39);
+    assert.strictEqual(top[1].id, 140);
+    assert.ok(!top.some((l) => l.id === 999));
   });
 
   test('maps team rows with logo', () => {
