@@ -1,6 +1,10 @@
 const mongoose = require('mongoose');
 const Player = require('../models/Player');
 const { escapeRegex } = require('../utils/escapeRegex');
+const { ApiFootballError } = require('../services/apiFootballService');
+
+const VALID_POSITIONS = new Set(['Attacker', 'Midfielder', 'Defender', 'Goalkeeper']);
+const MAX_IMAGE_CHARS = 2_800_000;
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 20;
@@ -180,9 +184,98 @@ async function nearbyPlayers(req, res, next) {
   }
 }
 
+/**
+ * @param {unknown} image
+ * @returns {string|undefined}
+ */
+function normalizeBase64Image(image) {
+  if (image == null || image === '') return undefined;
+  const s = String(image).trim();
+  if (!s) return undefined;
+  if (s.length > MAX_IMAGE_CHARS) {
+    return null;
+  }
+  if (s.startsWith('data:image/')) return s;
+  if (/^[A-Za-z0-9+/=]+$/.test(s)) {
+    return `data:image/jpeg;base64,${s}`;
+  }
+  return undefined;
+}
+
+/**
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ * @param {{ resolveTeamStadiumContext: (p: { leagueId: number, teamId: number, season: number }) => Promise<{ teamName: string, leagueName: string, venueName: string, location: object }> }} apiFootballService
+ */
+async function createPlayer(req, res, next, apiFootballService) {
+  try {
+    const { name, position, leagueId, teamId, season, image } = req.body || {};
+    const trimmedName = name != null ? String(name).trim() : '';
+    if (!trimmedName) {
+      return res.status(400).json({ error: 'name is required' });
+    }
+    if (!VALID_POSITIONS.has(position)) {
+      return res.status(400).json({
+        error: 'position must be one of: Attacker, Midfielder, Defender, Goalkeeper',
+      });
+    }
+    const lid = Number(leagueId);
+    const tid = Number(teamId);
+    const seasonNum = Number(season);
+    if (!Number.isFinite(lid) || !Number.isFinite(tid) || !Number.isFinite(seasonNum)) {
+      return res.status(400).json({ error: 'leagueId, teamId, and season must be numbers' });
+    }
+
+    const normalizedImage = normalizeBase64Image(image);
+    if (image != null && image !== '' && normalizedImage == null) {
+      return res.status(400).json({ error: 'image must be a valid base64 photo under 2MB' });
+    }
+
+    const { teamName, leagueName, venueName, location } = await apiFootballService.resolveTeamStadiumContext({
+      leagueId: lid,
+      teamId: tid,
+      season: seasonNum,
+    });
+
+    const duplicate = await Player.findOne({
+      name: new RegExp(`^${escapeRegex(trimmedName)}$`, 'i'),
+      team: new RegExp(`^${escapeRegex(teamName)}$`, 'i'),
+    }).lean();
+    if (duplicate) {
+      return res.status(409).json({ error: 'A player with this name already exists on this team' });
+    }
+
+    const doc = {
+      name: trimmedName,
+      position,
+      team: teamName,
+      league: leagueName,
+      venueName,
+      location,
+      registrationDate: new Date(),
+    };
+    if (normalizedImage) {
+      doc.image = normalizedImage;
+    }
+
+    const created = await Player.create(doc);
+    return res.status(201).json(created);
+  } catch (err) {
+    if (err instanceof ApiFootballError) {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
+    if (err?.code === 11000) {
+      return res.status(409).json({ error: 'A player with this name already exists on this team' });
+    }
+    return next(err);
+  }
+}
+
 module.exports = {
   listPlayers,
   searchPlayers,
   getPlayerById,
   nearbyPlayers,
+  createPlayer,
 };

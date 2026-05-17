@@ -353,9 +353,10 @@ function createApiFootballService(cfg = {}) {
   }
 
   /**
+   * Resolve league/team names and stadium GeoJSON for imports and manual player create.
    * @param {{ leagueId: number, teamId: number, season: number }} params
    */
-  async function buildImportPayloads(params) {
+  async function resolveTeamStadiumContext(params) {
     const leagueId = Number(params.leagueId);
     const teamId = Number(params.teamId);
     const season = Number(params.season);
@@ -366,9 +367,6 @@ function createApiFootballService(cfg = {}) {
     const { leagueName } = await assertLeagueBelongsToTeam(teamId, leagueId, season);
     const teamRow = await fetchTeam(teamId);
     let venueLabel = teamRow.venueName;
-    /** @type {{ type: 'Point', coordinates: [number, number] }} */
-    let location;
-
     let coords = teamRow.embeddedCoords;
     if (!coords && teamRow.venueId != null && Number.isFinite(teamRow.venueId)) {
       try {
@@ -395,16 +393,31 @@ function createApiFootballService(cfg = {}) {
       );
     }
 
-    location = { type: 'Point', coordinates: [coords.lng, coords.lat] };
+    const location = { type: 'Point', coordinates: [coords.lng, coords.lat] };
+    return {
+      teamName: teamRow.teamName,
+      leagueName,
+      venueName: venueLabel,
+      location,
+    };
+  }
+
+  /**
+   * @param {{ leagueId: number, teamId: number, season: number }} params
+   */
+  async function buildImportPayloads(params) {
+    const { teamName, leagueName, venueName, location } = await resolveTeamStadiumContext(params);
+    const teamId = Number(params.teamId);
+    const season = Number(params.season);
 
     const rawPlayers = await fetchAllPlayersPages(teamId, season);
     const players = [];
     for (const row of rawPlayers) {
-      const doc = mapImportPlayerRow(row, teamRow.teamName, leagueName, venueLabel, location);
+      const doc = mapImportPlayerRow(row, teamName, leagueName, venueName, location);
       if (doc) players.push(doc);
     }
 
-    return { players, teamName: teamRow.teamName, leagueName, venueName: venueLabel };
+    return { players, teamName, leagueName, venueName };
   }
 
   /**
@@ -442,6 +455,7 @@ function createApiFootballService(cfg = {}) {
     fetchVenuePoint,
     fetchAllPlayersPages,
     buildImportPayloads,
+    resolveTeamStadiumContext,
     fetchLeaguesForSeason,
     fetchTeamsForLeague,
   };

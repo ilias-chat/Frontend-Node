@@ -2,13 +2,20 @@ const express = require('express');
 const playerController = require('../controllers/playerController');
 const playerCommentController = require('../controllers/playerCommentController');
 const { createAuthMiddleware } = require('../middleware/authMiddleware');
+const { getApiFootballService } = require('../services/apiFootballService');
 
 /**
- * @param {{ verifyIdToken?: (token: string) => Promise<{ uid: string, email?: string }> }} [options]
+ * @param {{ verifyIdToken?: (token: string) => Promise<{ uid: string, email?: string }>, apiFootballService?: object }} [options]
  */
 function createPlayerRoutes(options = {}) {
-  const { verifyFirebaseToken } = createAuthMiddleware(options);
+  const { verifyFirebaseToken, loadMongoUser } = createAuthMiddleware(options);
+  const authChain = [verifyFirebaseToken, loadMongoUser];
   const router = express.Router();
+
+  function resolveApiFootballService() {
+    if (options.apiFootballService) return options.apiFootballService;
+    return getApiFootballService();
+  }
 
   /**
    * @openapi
@@ -76,6 +83,16 @@ function createPlayerRoutes(options = {}) {
    *               $ref: '#/components/schemas/Error'
    */
   router.get('/nearby', playerController.nearbyPlayers);
+
+  router.post('/', ...authChain, (req, res, next) => {
+    let apiFootballService;
+    try {
+      apiFootballService = resolveApiFootballService();
+    } catch (err) {
+      return res.status(503).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+    return playerController.createPlayer(req, res, next, apiFootballService);
+  });
 
   /**
    * @openapi

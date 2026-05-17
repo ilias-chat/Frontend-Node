@@ -37,6 +37,14 @@ function mockApiFootballService() {
         { id: 33, name: 'Test FC', logo: 'https://example.com/team.png' },
       ];
     },
+    async resolveTeamStadiumContext() {
+      return {
+        teamName: 'Test FC',
+        leagueName: 'Test League',
+        venueName: 'Test Arena',
+        location: londonPoint,
+      };
+    },
     async buildImportPayloads() {
       return {
         players: [
@@ -106,7 +114,12 @@ mongoDescribe('Players API — integration (requires MONGO_URI)', { concurrency:
   before(async () => {
     await mongoose.connect(process.env.MONGO_URI);
     await User.deleteMany({ firebaseUID: { $in: [uid, adminUid] } });
-    await Player.deleteMany({ externalId: { $in: [910001, 910002, 910003] } });
+    await Player.deleteMany({
+      $or: [
+        { externalId: { $in: [910001, 910002, 910003] } },
+        { name: /^Manual Star$/i, team: 'Test FC' },
+      ],
+    });
     await User.create([
       { firebaseUID: uid, email: 'playeruser@test.com', name: 'Test Player', role: 'user' },
       { firebaseUID: adminUid, email: 'playeradmin@test.com', role: 'admin' },
@@ -115,7 +128,12 @@ mongoDescribe('Players API — integration (requires MONGO_URI)', { concurrency:
 
   after(async () => {
     await User.deleteMany({ firebaseUID: { $in: [uid, adminUid] } });
-    await Player.deleteMany({ externalId: { $in: [910001, 910002, 910003] } });
+    await Player.deleteMany({
+      $or: [
+        { externalId: { $in: [910001, 910002, 910003] } },
+        { name: /^Manual Star$/i, team: 'Test FC' },
+      ],
+    });
     await mongoose.disconnect();
   });
 
@@ -182,6 +200,41 @@ mongoDescribe('Players API — integration (requires MONGO_URI)', { concurrency:
     assert.strictEqual(withPhoto?.image, 'https://example.com/a.png');
     const withoutPhoto = await Player.findOne({ externalId: 910002 }).lean();
     assert.ok(!withoutPhoto?.image);
+  });
+
+  test('POST /api/players creates manual player and blocks duplicate', async () => {
+    const app = createApp({
+      verifyIdToken: mockVerify({ uid, email: 'playeruser@test.com' }),
+      apiFootballService: mockApiFootballService(),
+    });
+    const res = await request(app)
+      .post('/api/players')
+      .set('Authorization', 'Bearer ok')
+      .send({
+        name: 'Manual Star',
+        position: 'Attacker',
+        leagueId: 39,
+        teamId: 33,
+        season: 2023,
+      })
+      .expect(201);
+    assert.strictEqual(res.body.name, 'Manual Star');
+    assert.strictEqual(res.body.team, 'Test FC');
+    assert.strictEqual(res.body.league, 'Test League');
+    assert.strictEqual(res.body.venueName, 'Test Arena');
+    assert.ok(res.body.location);
+
+    await request(app)
+      .post('/api/players')
+      .set('Authorization', 'Bearer ok')
+      .send({
+        name: 'manual star',
+        position: 'Midfielder',
+        leagueId: 39,
+        teamId: 33,
+        season: 2023,
+      })
+      .expect(409);
   });
 
   test('import-players requires externalIds', async () => {
