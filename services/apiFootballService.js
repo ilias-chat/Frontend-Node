@@ -187,10 +187,19 @@ function mapImportPlayerRow(row, teamName, leagueName, venueName, location) {
   };
 }
 
+/** @type {Map<string, { at: number, data: object }>} */
+const importPayloadCache = new Map();
+const IMPORT_PAYLOAD_CACHE_TTL_MS = 5 * 60 * 1000;
+
+function importPayloadCacheKey(leagueId, teamId, season) {
+  return `${leagueId}:${teamId}:${season}`;
+}
+
 function createApiFootballService(cfg = {}) {
   const apiKey = cfg.apiKey ?? process.env.API_FOOTBALL_KEY;
   const baseUrl = (cfg.baseUrl ?? DEFAULT_BASE).replace(/\/$/, '');
   const fetchImpl = cfg.fetch ?? globalThis.fetch;
+  const cacheTtlMs = cfg.importCacheTtlMs ?? IMPORT_PAYLOAD_CACHE_TTL_MS;
 
   if (!apiKey) {
     throw new Error('API_FOOTBALL_KEY is not set');
@@ -213,7 +222,13 @@ function createApiFootballService(cfg = {}) {
       headers: { 'x-apisports-key': apiKey },
     });
     if (!res.ok) {
-      throw new ApiFootballError(`API-Football HTTP ${res.status}`, res.status >= 400 && res.status < 600 ? res.status : 502);
+      const status = res.status >= 400 && res.status < 600 ? res.status : 502;
+      const hint =
+        status === 429
+          ? 'API-Football rate limit reached. Wait a minute and try again, or avoid reloading the squad list before import.'
+          : undefined;
+      const message = hint ? `API-Football HTTP ${status}. ${hint}` : `API-Football HTTP ${res.status}`;
+      throw new ApiFootballError(message, status);
     }
     /** @type {{ errors?: { message?: string }[], paging?: { current?: number, total?: number }, response?: unknown }} */
     const data = await res.json();
@@ -406,9 +421,16 @@ function createApiFootballService(cfg = {}) {
    * @param {{ leagueId: number, teamId: number, season: number }} params
    */
   async function buildImportPayloads(params) {
-    const { teamName, leagueName, venueName, location } = await resolveTeamStadiumContext(params);
+    const leagueId = Number(params.leagueId);
     const teamId = Number(params.teamId);
     const season = Number(params.season);
+    const cacheKey = importPayloadCacheKey(leagueId, teamId, season);
+    const cached = importPayloadCache.get(cacheKey);
+    if (cached && Date.now() - cached.at < cacheTtlMs) {
+      return cached.data;
+    }
+
+    const { teamName, leagueName, venueName, location } = await resolveTeamStadiumContext(params);
 
     const rawPlayers = await fetchAllPlayersPages(teamId, season);
     const players = [];
@@ -417,7 +439,9 @@ function createApiFootballService(cfg = {}) {
       if (doc) players.push(doc);
     }
 
-    return { players, teamName, leagueName, venueName };
+    const result = { players, teamName, leagueName, venueName };
+    importPayloadCache.set(cacheKey, { at: Date.now(), data: result });
+    return result;
   }
 
   /**
