@@ -257,6 +257,30 @@ mongoDescribe('Players API — integration (requires MONGO_URI)', { concurrency:
     assert.strictEqual(res.body.limit, 5);
   });
 
+  test('GET list q matches name team or league', async () => {
+    const app = createApp({ verifyIdToken: mockVerify() });
+    const byName = await request(app).get('/api/players').query({ q: 'Import Alpha' }).expect(200);
+    assert.ok(byName.body.data.some((p) => p.name === 'Import Alpha'));
+
+    const byLeague = await request(app).get('/api/players').query({ q: 'Test League' }).expect(200);
+    assert.ok(byLeague.body.data.length >= 1);
+  });
+
+  test('GET list registeredOn filters by registration day', async () => {
+    const player = await Player.findOne({ externalId: 910001 }).lean();
+    assert.ok(player?.registrationDate);
+    const day = new Date(player.registrationDate).toISOString().slice(0, 10);
+    const app = createApp({ verifyIdToken: mockVerify() });
+    const res = await request(app).get('/api/players').query({ registeredOn: day }).expect(200);
+    assert.ok(res.body.data.some((p) => String(p._id) === String(player._id)));
+  });
+
+  test('GET list rejects invalid registeredOn', async () => {
+    const app = createApp({ verifyIdToken: mockVerify() });
+    const res = await request(app).get('/api/players').query({ registeredOn: 'not-a-date' }).expect(400);
+    assert.ok(res.body.error);
+  });
+
   test('GET search requires q', async () => {
     const app = createApp({ verifyIdToken: mockVerify() });
     const res = await request(app).get('/api/players/search').expect(400);

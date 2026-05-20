@@ -23,6 +23,30 @@ function parseLimit(v) {
 }
 
 /**
+ * @param {string} raw YYYY-MM-DD
+ * @returns {{ start: Date, end: Date } | null}
+ */
+function parseRegisteredOnDay(raw) {
+  const s = String(raw).trim();
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (!match) {
+    return null;
+  }
+  const y = Number(match[1]);
+  const m = Number(match[2]);
+  const d = Number(match[3]);
+  if (m < 1 || m > 12 || d < 1 || d > 31) {
+    return null;
+  }
+  const start = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+  const end = new Date(Date.UTC(y, m - 1, d, 23, 59, 59, 999));
+  if (start.getUTCFullYear() !== y || start.getUTCMonth() !== m - 1 || start.getUTCDate() !== d) {
+    return null;
+  }
+  return { start, end };
+}
+
+/**
  * @param {import('express').Request} req
  * @param {import('express').Response} res
  * @param {import('express').NextFunction} next
@@ -42,6 +66,18 @@ async function listPlayers(req, res, next) {
     if (req.query.position != null && String(req.query.position).trim() !== '') {
       const p = String(req.query.position).trim();
       filter.position = new RegExp(escapeRegex(p), 'i');
+    }
+    if (req.query.q != null && String(req.query.q).trim() !== '') {
+      const q = String(req.query.q).trim();
+      const re = new RegExp(escapeRegex(q), 'i');
+      filter.$or = [{ name: re }, { team: re }, { league: re }];
+    }
+    if (req.query.registeredOn != null && String(req.query.registeredOn).trim() !== '') {
+      const day = parseRegisteredOnDay(req.query.registeredOn);
+      if (!day) {
+        return res.status(400).json({ error: 'Invalid registeredOn; use YYYY-MM-DD' });
+      }
+      filter.registrationDate = { $gte: day.start, $lte: day.end };
     }
 
     const [total, items] = await Promise.all([
