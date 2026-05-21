@@ -116,6 +116,50 @@ function createAdminRoutes(options = {}) {
     return playerAdminController.listTeams(req, res, next, apiFootballService);
   });
 
+  /**
+   * @openapi
+   * /api/admin/squad-players:
+   *   get:
+   *     tags: [Admin]
+   *     summary: Preview squad players before import (API-Football)
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: query
+   *         name: leagueId
+   *         required: true
+   *         schema:
+   *           type: integer
+   *       - in: query
+   *         name: teamId
+   *         required: true
+   *         schema:
+   *           type: integer
+   *       - in: query
+   *         name: season
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       '200':
+   *         description: Squad preview with externalId, name, position, image
+   *       '400':
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   *       '401':
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   *       '503':
+   *         description: API-Football service unavailable
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   */
   router.get('/squad-players', ...authChain, (req, res, next) => {
     let apiFootballService;
     try {
@@ -139,6 +183,52 @@ function createAdminRoutes(options = {}) {
   /**
    * @openapi
    * /api/admin/players/{id}:
+   *   patch:
+   *     tags: [Admin]
+   *     summary: Update a player (admin only)
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/UpdatePlayerBody'
+   *     responses:
+   *       '200':
+   *         description: Updated player document
+   *       '400':
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   *       '401':
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   *       '403':
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   *       '404':
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   *       '409':
+   *         description: Duplicate name on same team
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    *   delete:
    *     tags: [Admin]
    *     summary: Remove a player from the local database

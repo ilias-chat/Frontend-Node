@@ -103,6 +103,52 @@ const options = {
             lng: { type: 'number', minimum: -180, maximum: 180 },
           },
         },
+        CreatePlayerBody: {
+          type: 'object',
+          required: ['name', 'position', 'leagueId', 'teamId', 'season'],
+          properties: {
+            name: { type: 'string' },
+            position: {
+              type: 'string',
+              enum: ['Attacker', 'Midfielder', 'Defender', 'Goalkeeper'],
+            },
+            leagueId: { type: 'integer', description: 'API-Football league id' },
+            teamId: { type: 'integer', description: 'API-Football team id' },
+            season: { type: 'integer', description: 'Season year (e.g. 2023)' },
+            image: {
+              type: 'string',
+              description: 'Optional base64 or data-URL photo (max ~2MB)',
+            },
+            lat: {
+              type: 'number',
+              description: 'Device latitude when stadium coords are unavailable',
+            },
+            lng: { type: 'number', description: 'Device longitude' },
+          },
+        },
+        UpdatePlayerBody: {
+          type: 'object',
+          required: ['name', 'position', 'lat', 'lng'],
+          properties: {
+            name: { type: 'string' },
+            position: {
+              type: 'string',
+              enum: ['Attacker', 'Midfielder', 'Defender', 'Goalkeeper'],
+            },
+            lat: { type: 'number', minimum: -90, maximum: 90 },
+            lng: { type: 'number', minimum: -180, maximum: 180 },
+            leagueId: {
+              type: 'integer',
+              description: 'Optional — change team/league via API-Football',
+            },
+            teamId: { type: 'integer' },
+            season: { type: 'integer' },
+            image: {
+              type: 'string',
+              description: 'Optional base64 or data-URL photo (max ~2MB)',
+            },
+          },
+        },
       },
     },
   },

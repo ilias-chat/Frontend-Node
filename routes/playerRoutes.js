@@ -70,9 +70,14 @@ function createPlayerRoutes(options = {}) {
    *           type: number
    *       - in: query
    *         name: radiusKm
-   *         required: true
    *         schema:
    *           type: number
+   *           description: Radius in km (use this or distance)
+   *       - in: query
+   *         name: distance
+   *         schema:
+   *           type: number
+   *           description: Radius in meters (alternative to radiusKm)
    *     responses:
    *       '200':
    *         description: Players and deduped stadiums
@@ -84,6 +89,53 @@ function createPlayerRoutes(options = {}) {
    */
   router.get('/nearby', playerController.nearbyPlayers);
 
+  /**
+   * @openapi
+   * /api/players:
+   *   post:
+   *     tags: [Players]
+   *     summary: Register a player manually (authenticated)
+   *     description: Resolves team/league/venue from API-Football. Requires device or stadium coordinates.
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/CreatePlayerBody'
+   *     responses:
+   *       '201':
+   *         description: Created player document
+   *       '400':
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   *       '401':
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   *       '409':
+   *         description: Duplicate name on same team
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   *       '422':
+   *         description: Could not resolve stadium coordinates
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   *       '503':
+   *         description: API-Football service unavailable
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   */
   router.post('/', ...authChain, (req, res, next) => {
     let apiFootballService;
     try {
@@ -259,9 +311,26 @@ function createPlayerRoutes(options = {}) {
    *         name: limit
    *         schema:
    *           type: integer
+   *       - in: query
+   *         name: q
+   *         schema:
+   *           type: string
+   *         description: Search name, team, or league (case-insensitive)
+   *       - in: query
+   *         name: registeredOn
+   *         schema:
+   *           type: string
+   *           format: date
+   *         description: Filter by registration day (YYYY-MM-DD)
    *     responses:
    *       '200':
    *         description: Paginated players
+   *       '400':
+   *         description: Invalid registeredOn
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    */
   router.get('/', playerController.listPlayers);
 
