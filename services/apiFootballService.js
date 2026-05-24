@@ -375,6 +375,7 @@ function createApiFootballService(cfg = {}) {
     const leagueId = Number(params.leagueId);
     const teamId = Number(params.teamId);
     const season = Number(params.season);
+    const allowMissingStadiumCoords = Boolean(params.allowMissingStadiumCoords);
     if (![leagueId, teamId, season].every((n) => Number.isFinite(n))) {
       throw new ApiFootballError('leagueId, teamId, and season must be finite numbers', 400);
     }
@@ -396,8 +397,10 @@ function createApiFootballService(cfg = {}) {
         if (!missingCoords) {
           throw err;
         }
-        const geo = await geocodeVenueNominatim(teamRow.geocodeHint, teamRow.venueName);
-        coords = { lat: geo.lat, lng: geo.lng };
+        if (!allowMissingStadiumCoords) {
+          const geo = await geocodeVenueNominatim(teamRow.geocodeHint, teamRow.venueName);
+          coords = { lat: geo.lat, lng: geo.lng };
+        }
       }
     }
 
@@ -419,14 +422,16 @@ function createApiFootballService(cfg = {}) {
     const leagueId = Number(params.leagueId);
     const teamId = Number(params.teamId);
     const season = Number(params.season);
-    const cacheKey = importPayloadCacheKey(leagueId, teamId, season);
+    const allowMissingStadiumCoords = Boolean(params.allowMissingStadiumCoords);
+    const cacheKey =
+      importPayloadCacheKey(leagueId, teamId, season) + (allowMissingStadiumCoords ? ':dev' : '');
     const cached = importPayloadCache.get(cacheKey);
     if (cached && Date.now() - cached.at < cacheTtlMs) {
       return cached.data;
     }
 
-    const ctx = await resolveTeamStadiumContext(params);
-    if (!ctx.location) {
+    const ctx = await resolveTeamStadiumContext({ ...params, allowMissingStadiumCoords });
+    if (!allowMissingStadiumCoords && !ctx.location) {
       throw new ApiFootballError(
         'Could not resolve stadium coordinates (no coords on team venue, and no venue id for /venues or geocode)',
         422

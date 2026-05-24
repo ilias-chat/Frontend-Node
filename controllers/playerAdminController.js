@@ -55,13 +55,36 @@ async function importPlayers(req, res, next, apiFootballService) {
       return res.status(400).json({ error: 'leagueId, teamId, and season are required' });
     }
 
+    const lat = Number(req.body.lat);
+    const lng = Number(req.body.lng);
+    const hasDeviceCoords =
+      Number.isFinite(lat) &&
+      Number.isFinite(lng) &&
+      lat >= -90 &&
+      lat <= 90 &&
+      lng >= -180 &&
+      lng <= 180;
+
     const { players: allPlayers, teamName, leagueName, venueName } = await apiFootballService.buildImportPayloads({
       leagueId: Number(leagueId),
       teamId: Number(teamId),
       season: Number(season),
+      allowMissingStadiumCoords: hasDeviceCoords,
     });
 
-    let players = allPlayers;
+    let stadiumLocation = allPlayers.length > 0 ? allPlayers[0].location : null;
+    let importLocation = stadiumLocation;
+    if (!importLocation && hasDeviceCoords) {
+      importLocation = { type: 'Point', coordinates: [lng, lat] };
+    }
+    if (!importLocation) {
+      return res.status(422).json({
+        error:
+          'Could not resolve stadium coordinates for this team. Send lat and lng in the request body (device GPS), or enable location and try again.',
+      });
+    }
+
+    let players = allPlayers.map((doc) => ({ ...doc, location: importLocation }));
     if (externalIds != null) {
       if (!Array.isArray(externalIds) || externalIds.length === 0) {
         return res.status(400).json({ error: 'externalIds must be a non-empty array of player ids' });
