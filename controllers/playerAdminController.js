@@ -210,6 +210,7 @@ async function updatePlayer(req, res, next, apiFootballService) {
         leagueId: lid,
         teamId: tid,
         season: seasonNum,
+        allowMissingStadiumCoords: true,
       });
       teamName = ctx.teamName;
       leagueName = ctx.leagueName;
