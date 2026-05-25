@@ -13,6 +13,8 @@ function parseCorsOrigins() {
     'http://127.0.0.1:8100',
     'ionic://localhost',
     'capacitor://localhost',
+  /** Capacitor 8 Android WebView (default androidScheme: https) */
+    'https://localhost',
   ];
   const raw = process.env.FRONTEND_ORIGIN || process.env.CORS_ORIGINS || '';
   const fromEnv = raw
