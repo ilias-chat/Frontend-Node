@@ -44,7 +44,7 @@ function createApp(options = {}) {
     })
   );
 
-  app.use(express.json());
+  app.use(express.json({ limit: '4mb' }));
 
   const swaggerSpec = buildSwaggerSpec();
   app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
@@ -77,6 +77,12 @@ function createApp(options = {}) {
   app.use((err, _req, res, _next) => {
     console.error(err);
     if (res.headersSent) return;
+    if (err?.type === 'entity.too.large') {
+      return res
+        .status(413)
+        .type('application/json')
+        .json({ error: 'Request body too large. Use a smaller photo (max ~2MB).' });
+    }
     res.status(500).type('application/json').json({ error: 'Internal Server Error' });
   });
 
