@@ -81,22 +81,19 @@ mongoDescribe('POST /api/lineup/suggest', () => {
     await mongoose.disconnect();
   });
 
-  test('works without bearer token while endpoint is public (TEMP)', async () => {
-    const total = await Player.countDocuments({});
-    if (total < MIN_PLAYERS_FOR_LINEUP) {
-      return;
-    }
-
+  test('returns 401 without Authorization header', async () => {
     const app = createApp({
+      verifyIdToken: mockVerify({ uid, email: 'lineup@test.com' }),
       grokService: mockGrokService(),
     });
     const res = await request(app).post('/api/lineup/suggest').send({ formation: '4-4-2' });
-    assert.equal(res.status, 200);
-    assert.equal(res.body.starters.length, 11);
+    assert.equal(res.status, 401);
+    assert.match(res.body.error, /Authorization/i);
   });
 
   test('returns 400 when formation is missing', async () => {
     const app = createApp({
+      verifyIdToken: mockVerify({ uid, email: 'lineup@test.com' }),
       grokService: mockGrokService(),
     });
     const res = await request(app)
@@ -109,6 +106,7 @@ mongoDescribe('POST /api/lineup/suggest', () => {
 
   test('returns 400 for invalid formation', async () => {
     const app = createApp({
+      verifyIdToken: mockVerify({ uid, email: 'lineup@test.com' }),
       grokService: mockGrokService(),
     });
     const res = await request(app)
@@ -127,6 +125,7 @@ mongoDescribe('POST /api/lineup/suggest', () => {
     );
 
     const app = createApp({
+      verifyIdToken: mockVerify({ uid, email: 'lineup@test.com' }),
       grokService: mockGrokService(),
     });
     const res = await request(app)

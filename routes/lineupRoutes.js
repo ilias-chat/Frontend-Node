@@ -1,11 +1,14 @@
 const express = require('express');
 const lineupController = require('../controllers/lineupController');
+const { createAuthMiddleware } = require('../middleware/authMiddleware');
 const { getGrokService } = require('../services/grokService');
 
 /**
- * @param {{ grokService?: object }} [options]
+ * @param {{ verifyIdToken?: (token: string) => Promise<{ uid: string, email?: string }>, grokService?: object }} [options]
  */
 function createLineupRoutes(options = {}) {
+  const { verifyFirebaseToken, loadMongoUser } = createAuthMiddleware(options);
+  const authChain = [verifyFirebaseToken, loadMongoUser];
   const router = express.Router();
 
   function resolveGrokService() {
@@ -28,11 +31,12 @@ function createLineupRoutes(options = {}) {
    * /api/lineup/suggest:
    *   post:
    *     tags: [Lineup]
-   *     summary: Suggest a best XI from locally stored players (xAI Grok)
+   *     summary: Suggest a best XI from locally stored players (AI)
    *     description: |
-   *       Loads all players from MongoDB and asks Grok to pick the best starting XI.
+   *       Loads all players from MongoDB and asks the configured AI provider to pick the best starting XI.
    *       Requires at least 25 players in the database and `GROK_API_KEY` on the server.
-   *       **TEMP:** Public (no auth) for Swagger testing — re-enable bearerAuth before production.
+   *     security:
+   *       - bearerAuth: []
    *     requestBody:
    *       required: true
    *       content:
@@ -50,6 +54,10 @@ function createLineupRoutes(options = {}) {
    *         description: AI lineup suggestion
    *       '400':
    *         description: Missing or invalid formation
+   *       '401':
+   *         description: Missing or invalid Firebase token
+   *       '404':
+   *         description: User not found (sync account first)
    *       '422':
    *         description: Fewer than 25 players in the database
    *       '503':
@@ -57,8 +65,7 @@ function createLineupRoutes(options = {}) {
    *       '502':
    *         description: Grok error or invalid AI response
    */
-  // TEMP: public for Swagger testing — restore ...authChain before production
-  router.post('/suggest', attachGrokService, lineupController.suggestLineup);
+  router.post('/suggest', ...authChain, attachGrokService, lineupController.suggestLineup);
 
   return router;
 }
