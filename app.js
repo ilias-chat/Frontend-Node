@@ -28,7 +28,7 @@ function parseCorsOrigins() {
 }
 
 /**
- * @param {{ verifyIdToken?: (token: string) => Promise<{ uid: string, email?: string }>, apiFootballService?: object }} [options] Test-only overrides (Firebase verify, API-Football service mock).
+ * @param {{ verifyIdToken?: (token: string) => Promise<{ uid: string, email?: string }>, apiFootballService?: object, grokService?: object }} [options] Test-only overrides (Firebase verify, API-Football service mock).
  */
 function createApp(options = {}) {
   const app = express();

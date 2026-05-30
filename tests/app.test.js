@@ -42,6 +42,7 @@ describe('HTTP API', () => {
       '/api/players/{id}/comments',
       '/api/players/{id}/comments/{commentId}',
       '/api/players/{id}',
+      '/api/lineup/suggest',
     ];
     for (const path of expectedPaths) {
       assert.ok(res.body.paths[path], `missing OpenAPI path: ${path}`);

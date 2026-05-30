@@ -7,6 +7,7 @@
  *   MONGO_URI (required)
  *   FIREBASE_SERVICE_ACCOUNT_JSON (optional)
  *   API_FOOTBALL_KEY (optional; required for admin import against API-Football in production)
+ *   GROK_API_KEY (optional; required for POST /api/lineup/suggest)
  */
 const fs = require('fs');
 
@@ -40,6 +41,15 @@ if (apiFootballKey && String(apiFootballKey).trim()) {
 } else {
   console.log(
     '::warning::API_FOOTBALL_KEY is not set. POST /api/admin/import-players will return 503 on Cloud Run until you add the API_FOOTBALL_KEY repository secret and redeploy.'
+  );
+}
+
+const grokKey = process.env.GROK_API_KEY;
+if (grokKey && String(grokKey).trim()) {
+  env.GROK_API_KEY = String(grokKey).trim();
+} else {
+  console.log(
+    '::warning::GROK_API_KEY is not set. POST /api/lineup/suggest will return 503 on Cloud Run until you add the GROK_API_KEY repository secret and redeploy.'
   );
 }
 

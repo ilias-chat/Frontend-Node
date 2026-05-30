@@ -19,6 +19,7 @@ const options = {
       { name: 'Users', description: 'Profiles, auth exchange, admin' },
       { name: 'Players', description: 'Player discovery, comments, geo' },
       { name: 'Admin', description: 'API-Football import and moderation' },
+      { name: 'Lineup', description: 'AI lineup suggestions (xAI Grok)' },
     ],
     components: {
       securitySchemes: {
@@ -158,6 +159,7 @@ const options = {
     path.join(rootDir, 'routes', 'userRoutes.js'),
     path.join(rootDir, 'routes', 'adminRoutes.js'),
     path.join(rootDir, 'routes', 'playerRoutes.js'),
+    path.join(rootDir, 'routes', 'lineupRoutes.js'),
   ],
 };
 
