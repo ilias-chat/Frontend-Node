@@ -11,8 +11,6 @@ RUN chown -R node:node /app
 USER node
 
 ENV NODE_ENV=production
-ENV PORT=3000
 
-EXPOSE 3000
-
+# Do not set PORT here — Railway (and Cloud Run) inject process.env.PORT at runtime.
 CMD ["node", "server.js"]

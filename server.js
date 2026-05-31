@@ -27,7 +27,15 @@ async function main() {
     });
   });
 
-  await connectDatabase();
+  // Connect in the background so deploy healthchecks (/health) succeed even if MongoDB
+  // is slow or misconfigured — API routes will fail until MONGO_URI is valid.
+  connectDatabase().catch((err) => {
+    console.error(
+      'Database connection failed at startup:',
+      err && err.message ? err.message : err
+    );
+    console.error('Server keeps running for /health. Set MONGO_URI in Railway Variables.');
+  });
 }
 
 main().catch((err) => {
