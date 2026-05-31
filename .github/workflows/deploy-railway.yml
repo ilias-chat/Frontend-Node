@@ -1,0 +1,59 @@
+# Deploy TRWM-backend (Express + Dockerfile) to Railway.
+#
+# Railway runs a long-running container from the Dockerfile (see railway.json), so it
+# uses server.js as-is — no serverless wrapper needed.
+#
+# Required GitHub repository secret (Settings → Secrets and variables → Actions → Secrets):
+#   RAILWAY_TOKEN   A Railway PROJECT token (Railway → Project → Settings → Tokens).
+#                   Project tokens are scoped to one project + environment, ideal for CI.
+#
+# Optional repository variable (Settings → Secrets and variables → Actions → Variables):
+#   RAILWAY_SERVICE   Service name as shown in the Railway project (defaults to 'trwm-backend').
+#
+# Runtime env vars (MONGO_URI, FIREBASE_SERVICE_ACCOUNT_JSON, API_FOOTBALL_KEY,
+# GROK_API_KEY, FRONTEND_ORIGIN) are set in the Railway service → Variables, NOT here.
+# Do NOT set PORT — Railway injects it and server.js reads process.env.PORT.
+
+name: Deploy to Railway
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+concurrency:
+  group: railway-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy to Railway
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      RAILWAY_SERVICE: ${{ vars.RAILWAY_SERVICE || 'trwm-backend' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Verify Railway token
+        run: |
+          set -euo pipefail
+          if [ -z "${{ secrets.RAILWAY_TOKEN }}" ]; then
+            echo "::error::Set the RAILWAY_TOKEN repository secret (Railway project token)."
+            exit 1
+          fi
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy (build from Dockerfile on Railway)
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: railway up --service "$RAILWAY_SERVICE" --ci

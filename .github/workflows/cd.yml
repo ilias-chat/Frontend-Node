@@ -18,9 +18,9 @@
 
 name: CD
 
+# Manual-only: GCP Cloud Run deploys require an active billing account on the project.
+# Re-add the `push` trigger below to resume auto-deploys once billing is enabled again.
 on:
-  push:
-    branches: [main, master]
   workflow_dispatch:
 
 concurrency:
