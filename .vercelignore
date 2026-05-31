@@ -1,8 +1,0 @@
-.github
-tests
-scripts/run-tests.js
-cloudrun-env.json
-Dockerfile
-.dockerignore
-.env
-.cursor
